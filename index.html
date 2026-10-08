@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Best Practice 2569 สพป.มค.1</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22%3E%3Ccircle cx=%2216%22 cy=%2216%22 r=%2216%22 fill=%22%231c3578%22/%3E%3Cpath d=%22M9 16.5l4.5 4.5L23 11.5%22 fill=%22none%22 stroke=%22%23c9a227%22 stroke-width=%223.2%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;500;600&family=Sarabun:wght@400;500;600&display=swap">
@@ -70,6 +71,11 @@ h1 em{font-style:normal;color:var(--accent)}
 .pinrow input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 4px var(--accent-soft)}
 .pinrow .btn{padding:12px 26px}
 .err{color:var(--bad);font-size:14px;margin:12px 0 0;min-height:1.4em}
+.loading{display:flex;align-items:center;gap:14px;background:var(--band);border-radius:14px;padding:14px 16px}
+.loading strong{display:block;font-family:var(--font-display);font-weight:500}
+.loading span:not(.spin){display:block;font-size:13.5px;color:var(--muted)}
+.spin{width:26px;height:26px;border-radius:50%;border:3px solid var(--accent-soft);border-top-color:var(--gold);animation:spin .8s linear infinite;flex:none}
+@keyframes spin{to{transform:rotate(360deg)}}
 .setup{background:var(--warn-soft);border-radius:14px;padding:14px 16px;font-size:14.5px}
 .setup code{font-size:13px;background:var(--surface);padding:1px 6px;border-radius:4px}
 
@@ -166,7 +172,7 @@ tbody tr:last-child td{border-bottom:0}
   .login{padding:20px;border-radius:20px}
   .who{width:100%}
 }
-@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}.spin{animation-duration:2.4s}}
 </style>
 </head>
 <body>
@@ -188,7 +194,7 @@ tbody tr:last-child td{border-bottom:0}
   <section class="login" id="login">
     <h2>เข้าสู่ระบบกรรมการ</h2>
     <p>เลือกชื่อของท่าน แล้วใส่รหัส PIN ที่ได้รับจากผู้ดูแลระบบ</p>
-    <div id="loginBody"><p class="muted">กำลังโหลดรายชื่อกรรมการ…</p></div>
+    <div id="loginBody"><div class="loading"><span class="spin" aria-hidden="true"></span><div><strong>กำลังโหลด…</strong></div></div></div>
   </section>
 
   <!-- หน้ากรอกคะแนน -->
@@ -359,6 +365,10 @@ async function loadScores(){
 }
 
 /* ---------- login ---------- */
+const JUDGES_KEY = "bp2569.judgeList";
+const loadingHTML = msg => `<div class="loading"><span class="spin" aria-hidden="true"></span><div><strong>${msg}</strong><span>กำลังเชื่อมต่อ Google Sheets ครั้งแรกอาจใช้เวลา 5–10 วินาที</span></div></div>`;
+function cachedJudges(){ try { return JSON.parse(localStorage.getItem(JUDGES_KEY) || "null"); } catch(_){ return null; } }
+
 async function showLogin(){
   $("login").hidden = false; $("app").hidden = true; $("who").hidden = true;
   const body = $("loginBody");
@@ -366,16 +376,32 @@ async function showLogin(){
     body.innerHTML = '<div class="setup"><strong>ยังไม่ได้เชื่อมต่อ Google Sheets</strong><br>เปิดไฟล์ index.html แล้ววาง URL ของ Web App ลงในบรรทัด <code>const API_URL = ""</code></div>';
     return;
   }
-  let names = [];
+  // show the last known list at once, then refresh it from the sheet
+  const cached = cachedJudges();
+  const hasCache = Array.isArray(cached) && cached.length > 0;
+  if (hasCache) drawJudges(cached); else body.innerHTML = loadingHTML("กำลังโหลดรายชื่อกรรมการ…");
+  let names;
   try { names = await loadJudges(); }
-  catch(e){ body.innerHTML = '<p class="err">โหลดรายชื่อกรรมการไม่ได้ ตรวจสอบ URL ของ Web App แล้วโหลดหน้าใหม่</p>'; return; }
+  catch(e){
+    if (!hasCache) body.innerHTML = '<p class="err">โหลดรายชื่อกรรมการไม่ได้ ตรวจสอบอินเทอร์เน็ตแล้วโหลดหน้าใหม่</p>';
+    return;
+  }
   if (!names.length){ body.innerHTML = '<p class="err">ยังไม่มีรายชื่อกรรมการในชีต “กรรมการ”</p>'; return; }
-  body.innerHTML = `<div class="jlist" id="jlist">${names.map((n,i) => `<button type="button" id="j${i}" aria-pressed="false" data-name="${esc(n)}"><span class="jn">${i+1}</span>${esc(n)}</button>`).join("")}</div>
+  try { localStorage.setItem(JUDGES_KEY, JSON.stringify(names)); } catch(_){}
+  if (!hasCache || JSON.stringify(cached) !== JSON.stringify(names)) drawJudges(names);
+}
+
+function drawJudges(names){
+  const body = $("loginBody");
+  const pinVal = $("pin") ? $("pin").value : "";
+  if (S.picked && !names.includes(S.picked)) S.picked = null;
+  body.innerHTML = `<div class="jlist" id="jlist">${names.map((n,i) => `<button type="button" id="j${i}" aria-pressed="${n === S.picked}" data-name="${esc(n)}"><span class="jn">${i+1}</span>${esc(n)}</button>`).join("")}</div>
     <form class="pinrow" id="pinForm">
       <label for="pin">รหัส PIN<input id="pin" type="password" inputmode="numeric" autocomplete="off" maxlength="12"></label>
       <button class="btn primary" id="loginBtn" type="submit">เข้าสู่ระบบ</button>
     </form>
     <p class="err" id="loginErr"></p>`;
+  $("pin").value = pinVal;
   $("jlist").addEventListener("click", e => {
     const b = e.target.closest("button"); if (!b) return;
     S.picked = b.dataset.name;
@@ -387,14 +413,14 @@ async function showLogin(){
     const pin = $("pin").value.trim();
     if (!S.picked){ $("loginErr").textContent = "กรุณาเลือกชื่อกรรมการ"; return; }
     if (!pin){ $("loginErr").textContent = "กรุณาใส่รหัส PIN"; return; }
-    $("loginBtn").disabled = true; $("loginErr").textContent = "";
+    $("loginBtn").disabled = true; $("loginBtn").textContent = "กำลังเข้าสู่ระบบ…"; $("loginErr").textContent = "";
     try {
       await enter(S.picked, pin);
       try { localStorage.setItem(LOGIN_KEY, JSON.stringify({judge:S.picked, pin})); } catch(_){}
     } catch(err){
       $("loginErr").textContent = err.code === "auth" ? "รหัส PIN ไม่ถูกต้อง" : "เชื่อมต่อไม่สำเร็จ ลองอีกครั้ง";
-      $("loginBtn").disabled = false;
     }
+    $("loginBtn").disabled = false; $("loginBtn").textContent = "เข้าสู่ระบบ";
   });
 }
 async function enter(judge, pin){
@@ -637,6 +663,7 @@ buildRubric();
   let saved = null;
   try { saved = JSON.parse(localStorage.getItem(LOGIN_KEY) || "null"); } catch(_){}
   if (API_URL && saved && saved.judge && saved.pin){
+    $("loginBody").innerHTML = loadingHTML("กำลังเข้าสู่ระบบ " + esc(saved.judge) + "…");
     try { await enter(saved.judge, saved.pin); return; } catch(_){ try { localStorage.removeItem(LOGIN_KEY); } catch(__){} }
   }
   showLogin();
