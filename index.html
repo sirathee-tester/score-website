@@ -158,9 +158,9 @@ tbody tr:hover td,tbody tr:hover td.alt{background:var(--accent-soft)}
 <div class="wrap">
   <header class="mast">
     <div class="mast-text">
-      <p class="eyebrow">สำนักงานเขตพื้นที่การศึกษาประถมศึกษามหาสารคาม เขต 1 · ประจำปีการศึกษา 2569</p>
+      <p class="eyebrow">สำนักงานเขตพื้นที่การศึกษาประถมศึกษามหาสารคาม เขต 1 ประจำปีการศึกษา 2569</p>
       <h1>ระบบกรอกคะแนนการคัดเลือก <em>Best Practice</em></h1>
-      <p class="sub">วิธีปฏิบัติที่เป็นเลิศ ด้านการจัดการเรียนรู้ภาษาอังกฤษเชิงรุก (Active Learning) · คะแนนเต็ม 100 คะแนน 15 ตัวชี้วัด</p>
+      <p class="sub">วิธีปฏิบัติที่เป็นเลิศ ด้านการจัดการเรียนรู้ภาษาอังกฤษเชิงรุก (Active Learning)</p>
     </div>
     <div class="who" id="who" hidden>
       <div><span class="who-name" id="whoName"></span><span class="save" id="saveSt" data-s=""></span></div>
@@ -487,7 +487,6 @@ function renderEntry(){
   });
   $("tbl").innerHTML = html + "</tbody>";
   renderProgress();
-  $("foot").textContent = "พิมพ์คะแนนในช่อง ระบบบันทึกให้อัตโนมัติ และไม่ให้เกินคะแนนเต็มของแต่ละตัวชี้วัด (ช่องสีแดง = เกินหรือไม่ใช่ตัวเลข และยังไม่ถูกบันทึก) · กด Tab ไปช่องถัดไป · Enter หรือลูกศรขึ้น/ลง เพื่อเลื่อนไปครูคนถัดไป · ชี้ที่หัวคอลัมน์เพื่อดูชื่อตัวชี้วัดเต็ม";
 }
 function renderProgress(){
   if (S.view !== "entry") return;
